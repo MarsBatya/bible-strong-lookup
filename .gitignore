@@ -1,0 +1,17 @@
+# ── Build outputs ─────────────────────────────────────
+main.js
+main.js.map
+
+# ── Database (never commit — fetched at runtime) ──────
+*.sqlite3
+*.Sqlite3
+*.db
+
+# ── sql.js wasm (generated from node_modules on build) ─
+sql-wasm.wasm
+
+# ── Dependencies ──────────────────────────────────────
+node_modules/
+
+# ── Obsidian local data ───────────────────────────────
+data.json
