@@ -57,6 +57,31 @@ ORDER BY count DESC
 LIMIT 10
 `.trim();
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Mirror the capitalisation pattern of `source` onto `target`. */
+function mirrorCase(source: string, target: string): string {
+    const s = source.trim();
+    if (!s || !target) return target;
+
+    // ALL CAPS → ALL CAPS
+    if (s === s.toUpperCase() && s !== s.toLowerCase()) {
+        return target.toUpperCase();
+    }
+
+    // Title Case (first char upper, rest lower) → Title Case
+    const firstAlpha = s.search(/[a-zA-Zа-яА-ЯёЁ]/);
+    if (
+        firstAlpha !== -1 &&
+        s[firstAlpha] === s[firstAlpha].toUpperCase() &&
+        s.slice(firstAlpha + 1).toLowerCase() === s.slice(firstAlpha + 1)
+    ) {
+        return target.charAt(0).toUpperCase() + target.slice(1).toLowerCase();
+    }
+
+    return target; // lowercase or mixed → leave as-is
+}
+
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
 export default class BibleLookupPlugin extends Plugin {
@@ -250,8 +275,9 @@ class SearchModal extends SuggestModal<SearchResult> {
     }
 
     onChooseSuggestion(item: SearchResult): void {
-        this.plugin.insertOrCopy(this.editor, item.lemma);
-        this.plugin.addToHistory(this.lastQuery, item.lemma);
+        const cased = mirrorCase(this.lastQuery, item.lemma);
+        this.plugin.insertOrCopy(this.editor, cased);
+        this.plugin.addToHistory(this.lastQuery, cased);
     }
 }
 
