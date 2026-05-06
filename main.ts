@@ -10,7 +10,7 @@ import {
     requestUrl,
 } from 'obsidian';
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
-import sqlWasmBase64 from './sql-wasm.wasm';
+import sqlWasmBase64 from 'sql.js/dist/sql-wasm.wasm';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

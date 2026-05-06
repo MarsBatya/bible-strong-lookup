@@ -7,9 +7,6 @@ main.js.map
 *.Sqlite3
 *.db
 
-# ── sql.js wasm (generated from node_modules on build) ─
-sql-wasm.wasm
-
 # ── Dependencies ──────────────────────────────────────
 node_modules/
 

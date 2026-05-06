@@ -30,7 +30,6 @@ After build, you will have three files needed for the plugin to work:
 ```
 main.js          ← bundled plugin
 manifest.json    ← plugin metadata
-sql-wasm.wasm    ← SQLite WASM engine (auto-copied from node_modules)
 ```
 
 ---
@@ -60,7 +59,6 @@ https://github.com/YOUR_USER/YOUR_REPO/releases/download/v1.0/RST-KJV-v2.Sqlite3
 3. Copy into that folder:
    - `main.js`
    - `manifest.json`
-   - `sql-wasm.wasm`
 4. In Obsidian: **Settings → Community plugins → Installed plugins → reload** → enable **Bible Translation Lookup**
 
 ### Android
@@ -68,7 +66,7 @@ https://github.com/YOUR_USER/YOUR_REPO/releases/download/v1.0/RST-KJV-v2.Sqlite3
 1. Connect your phone via USB (or use a file manager app)
 2. Navigate to your vault → `.obsidian/plugins/bible-lookup/`  
    (create the folder if it doesn't exist)
-3. Copy the same three files: `main.js`, `manifest.json`, `sql-wasm.wasm`
+3. Copy the same three files: `main.js`, `manifest.json`
 4. In Obsidian: **Settings → Community plugins → reload** → enable the plugin
 
 > **Tip:** If you use Obsidian Sync, place the plugin files in your vault's `.obsidian/plugins/` folder and let Sync distribute them to Android automatically.
@@ -121,13 +119,12 @@ bible-lookup-plugin/
 ├── package.json
 ├── tsconfig.json
 ├── esbuild.config.mjs
-└── .gitignore        ← excludes *.sqlite3, main.js, sql-wasm.wasm
+└── .gitignore        ← excludes *.sqlite3, main.js
 ```
 
 Files produced by `npm run build` (not in git):
 ```
 main.js
-sql-wasm.wasm
 ```
 
 Files fetched at runtime (not in git):
