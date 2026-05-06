@@ -133,7 +133,7 @@ export default class BibleLookupPlugin extends Plugin {
             const buf = await this.app.vault.adapter.readBinary(dbPath);
             if (this.db) this.db.close();
             this.db = new this.SQL.Database(new Uint8Array(buf));
-            new Notice('Bible Lookup: database ready ✓');
+            console.log('Bible Lookup: database ready ✓');
         } catch {
             // DB hasn't been downloaded yet — silently skip
         }
