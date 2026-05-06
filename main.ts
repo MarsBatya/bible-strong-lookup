@@ -73,6 +73,7 @@ export default class BibleLookupPlugin extends Plugin {
         this.addCommand({
             id: 'bible-lookup-search',
             name: 'Search word translation',
+            icon: 'book-open-check',
             callback: () => {
                 if (!this.db) {
                     new Notice('Bible Lookup: database not loaded. Download it first via Settings or the "Fetch database" command.');
