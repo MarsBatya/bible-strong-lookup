@@ -10,6 +10,7 @@ import {
     requestUrl,
 } from 'obsidian';
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
+import sqlWasmBase64 from './sql-wasm.wasm';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,7 +38,6 @@ const DEFAULT_SETTINGS: BibleLookupSettings = {
 };
 
 const DB_FILENAME = 'bible.sqlite3';
-const WASM_FILENAME = 'sql-wasm.wasm';
 
 // Mirror of the Python script queries exactly
 const SQL_FIND_STRONG = `
@@ -85,7 +85,7 @@ function mirrorCase(source: string, target: string): string {
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
 export default class BibleLookupPlugin extends Plugin {
-    settings: BibleLookupSettings;
+    settings!: BibleLookupSettings;
     db: Database | null = null;
     SQL: SqlJsStatic | null = null;
 
@@ -138,16 +138,8 @@ export default class BibleLookupPlugin extends Plugin {
     // ─── Engine init ────────────────────────────────────────────────────────
 
     async initEngine(): Promise<void> {
-        const wasmPath = `${this.manifest.dir}/${WASM_FILENAME}`;
-        let wasmBuf: ArrayBuffer;
-        try {
-            wasmBuf = await this.app.vault.adapter.readBinary(wasmPath);
-        } catch {
-            console.warn('Bible Lookup: sql-wasm.wasm not found next to main.js — DB queries won\'t work.');
-            return;
-        }
-
-        this.SQL = await initSqlJs({ wasmBinary: new Uint8Array(wasmBuf) });
+        const binary = Uint8Array.from(atob(sqlWasmBase64), c => c.charCodeAt(0));
+        this.SQL = await initSqlJs({ wasmBinary: binary.buffer as ArrayBuffer });
         await this.loadDb();
     }
 

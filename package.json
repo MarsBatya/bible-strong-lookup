@@ -12,6 +12,7 @@
     },
     "devDependencies": {
         "@types/node": "^22.0.0",
+        "@types/sql.js": "^1.4.11",
         "builtin-modules": "^4.0.0",
         "esbuild": "^0.25.0",
         "obsidian": "latest",

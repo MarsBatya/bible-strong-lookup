@@ -1,21 +1,23 @@
 import esbuild from 'esbuild';
 import process from 'process';
 import builtins from 'builtin-modules';
-import { copyFileSync, existsSync } from 'fs';
+import { copyFileSync, existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const isProd = process.argv[2] === 'production';
 
-// ── Copy sql-wasm.wasm alongside the built main.js ───────────────────────────
-// Obsidian reads it via readBinary() at runtime; it MUST live next to main.js.
-const wasmSrc = resolve('node_modules/sql.js/dist/sql-wasm.wasm');
-if (existsSync(wasmSrc)) {
-    copyFileSync(wasmSrc, 'sql-wasm.wasm');
-    console.log('✓ Copied sql-wasm.wasm');
-} else {
-    console.error('✗ sql-wasm.wasm not found — run npm install first.');
-    process.exit(1);
-}
+const wasmBase64Plugin = {
+    name: 'wasm-base64',
+    setup(build) {
+        build.onLoad({ filter: /\.wasm$/ }, async (args) => {
+            const data = readFileSync(args.path);
+            return {
+                contents: `export default "${data.toString('base64')}"`,
+                loader: 'js',
+            };
+        });
+    },
+};
 
 // ── Bundle ───────────────────────────────────────────────────────────────────
 const ctx = await esbuild.context({
@@ -47,6 +49,7 @@ const ctx = await esbuild.context({
     define: {
         'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
     },
+    plugins: [wasmBase64Plugin],
 });
 
 if (isProd) {
