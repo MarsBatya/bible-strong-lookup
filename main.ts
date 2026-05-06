@@ -259,7 +259,7 @@ class SearchModal extends SuggestModal<SearchResult> {
         super(app);
         this.plugin = plugin;
         this.editor = editor;
-        this.setPlaceholder('Type a word (English or Russian)…');
+        this.setPlaceholder('Type a word (English or Russian, case is preserved) …');
     }
 
     getSuggestions(query: string): SearchResult[] {
