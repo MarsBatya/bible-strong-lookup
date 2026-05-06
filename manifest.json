@@ -1,7 +1,7 @@
 {
 	"id": "bible-lookup",
 	"name": "Bible Translation Lookup",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
 	"description": "Look up Bible word translations between English (KJV) and Russian (RST) using Strong's numbers.",
 	"author": "Mars Solar",
