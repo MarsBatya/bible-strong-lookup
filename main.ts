@@ -41,7 +41,7 @@ const DB_FILENAME = 'bible.sqlite3';
 
 // Mirror of the Python script queries exactly
 const SQL_FIND_STRONG = `
-SELECT strong_number, lemma, count, lang
+SELECT strong_number, lemma, count, lang, testament
 FROM lemmas
 WHERE lemma = ?
 ORDER BY count DESC
@@ -53,6 +53,7 @@ SELECT lemma, count
 FROM lemmas
 WHERE strong_number = ?
 AND lang != ?
+AND testament = ?
 ORDER BY count DESC
 LIMIT 10
 `.trim();
@@ -184,20 +185,20 @@ export default class BibleLookupPlugin extends Plugin {
         if (!lower) return [];
 
         // Step 1: find all (strong_number, lang) pairs for this lemma
-        const hits: Array<{ strong_number: number; lang: string }> = [];
+        const hits: Array<{ strong_number: number; lang: string, testament: string }> = [];
         const s1 = this.db.prepare(SQL_FIND_STRONG);
         s1.bind([lower]);
         while (s1.step()) {
-            const r = s1.getAsObject() as { strong_number: number; lang: string };
-            hits.push({ strong_number: r.strong_number, lang: r.lang });
+            const r = s1.getAsObject() as { strong_number: number; lang: string, testament: string };
+            hits.push({ strong_number: r.strong_number, lang: r.lang, testament: r.testament });
         }
         s1.free();
 
         // Step 2: for each hit, find translations in the OTHER language
         const out: SearchResult[] = [];
-        for (const { strong_number, lang } of hits) {
+        for (const { strong_number, lang, testament } of hits) {
             const s2 = this.db.prepare(SQL_FIND_TRANSLATIONS);
-            s2.bind([strong_number, lang]);
+            s2.bind([strong_number, lang, testament]);
             while (s2.step()) {
                 const r = s2.getAsObject() as { lemma: string; count: number };
                 out.push({ strong_number, lemma: r.lemma, count: r.count });
