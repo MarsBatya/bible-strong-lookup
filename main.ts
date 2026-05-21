@@ -18,6 +18,9 @@ interface SearchResult {
     strong_number: number;
     lemma: string;
     count: number;
+    sourceLemma: string; 
+    testament: string;
+    isPrefix?: boolean;
 }
 
 interface HistoryEntry {
@@ -54,6 +57,16 @@ FROM lemmas
 WHERE strong_number = ?
 AND lang != ?
 AND testament = ?
+ORDER BY count DESC
+LIMIT 10
+`.trim();
+
+
+const SQL_FIND_STRONG_PREFIX = `
+SELECT strong_number, lemma, count, lang, testament
+FROM lemmas
+WHERE lemma LIKE ? || '%'
+AND lemma != ?
 ORDER BY count DESC
 LIMIT 10
 `.trim();
@@ -184,24 +197,49 @@ export default class BibleLookupPlugin extends Plugin {
         const lower = word.toLowerCase().trim();
         if (!lower) return [];
 
-        // Step 1: find all (strong_number, lang) pairs for this lemma
-        const hits: Array<{ strong_number: number; lang: string, testament: string }> = [];
-        const s1 = this.db.prepare(SQL_FIND_STRONG);
-        s1.bind([lower]);
+        const exactResults = this._searchByLemmas(lower, false);
+
+        // If we got enough hits, return them directly
+        if (exactResults.length >= 3) return exactResults;
+
+        // Otherwise, also run prefix search and merge
+        const prefixResults = this._searchByLemmas(lower, true);
+
+        // Deduplicate by strong_number + lemma, exact results take priority
+        const seen = new Set(exactResults.map(r => `${r.strong_number}:${r.lemma}`));
+        const merged = [...exactResults];
+        for (const r of prefixResults) {
+            const key = `${r.strong_number}:${r.lemma}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                merged.push({ ...r, isPrefix: true });
+            }
+        }
+
+        merged.sort((a, b) => b.count - a.count);
+        return merged;
+    }
+
+    /** Shared engine for both exact and prefix searches. */
+    private _searchByLemmas(lower: string, prefix: boolean): SearchResult[] {
+        if (!this.db) return [];
+
+        const hits: Array<{ strong_number: number; lang: string; testament: string; sourceLemma: string }> = [];
+        const s1 = this.db.prepare(prefix ? SQL_FIND_STRONG_PREFIX : SQL_FIND_STRONG);
+        s1.bind(prefix ? [lower, lower] : [lower]);
         while (s1.step()) {
-            const r = s1.getAsObject() as { strong_number: number; lang: string, testament: string };
-            hits.push({ strong_number: r.strong_number, lang: r.lang, testament: r.testament });
+            const r = s1.getAsObject() as { strong_number: number; lang: string; testament: string; lemma: string };
+            hits.push({ strong_number: r.strong_number, lang: r.lang, testament: r.testament, sourceLemma: r.lemma });
         }
         s1.free();
 
-        // Step 2: for each hit, find translations in the OTHER language
         const out: SearchResult[] = [];
-        for (const { strong_number, lang, testament } of hits) {
+        for (const hit of hits) {
             const s2 = this.db.prepare(SQL_FIND_TRANSLATIONS);
-            s2.bind([strong_number, lang, testament]);
+            s2.bind([hit.strong_number, hit.lang, hit.testament]);
             while (s2.step()) {
                 const r = s2.getAsObject() as { lemma: string; count: number };
-                out.push({ strong_number, lemma: r.lemma, count: r.count });
+                out.push({ strong_number: hit.strong_number, lemma: r.lemma, count: r.count, sourceLemma: hit.sourceLemma, testament: hit.testament });
             }
             s2.free();
         }
@@ -261,10 +299,14 @@ class SearchModal extends SuggestModal<SearchResult> {
     }
 
     renderSuggestion(item: SearchResult, el: HTMLElement): void {
-        // Format: "776: "мир" (2236)"
+        const prefix = item.isPrefix ? '~' : '';
+        const strongPrefix = item.testament === 'OT' ? 'H' : 'G';
         el.createEl('span', {
-            text: `#${item.strong_number}: "${item.lemma}" (${item.count})`,
+            text: `${prefix}${strongPrefix}${item.strong_number} [${item.sourceLemma}]: "${item.lemma}" (${item.count})`,
         });
+        if (item.isPrefix) {
+            el.style.opacity = '0.75';
+        }
     }
 
     onChooseSuggestion(item: SearchResult): void {
