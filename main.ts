@@ -96,26 +96,36 @@ function mirrorCase(source: string, target: string): string {
     return target; // lowercase or mixed → leave as-is
 }
 
+function base64ToUint8Array(b64: string): Uint8Array {
+    const raw = atob(b64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+}
+
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
 export default class BibleLookupPlugin extends Plugin {
     settings!: BibleLookupSettings;
     db: Database | null = null;
     SQL: SqlJsStatic | null = null;
+    private engineReady: Promise<void> | null = null; // tracking init state
 
     async onload(): Promise<void> {
         await this.loadSettings();
 
-        // Load sql.js + DB in background — don't block Obsidian startup
-        this.initEngine().catch(e => console.error('Bible Lookup init error:', e));
+        // this.initEngine() will be called later, in order to minimize startup time
 
         this.addCommand({
             id: 'bible-lookup-search',
             name: 'Search word translation',
             icon: 'book-open-check',
-            callback: () => {
+            callback: async () => {
+                const needsInit = !this.engineReady;
+                if (needsInit) new Notice('Bible Lookup: loading database…', 2000);
+                await this.ensureEngine(); // loading engine on first use
                 if (!this.db) {
-                    new Notice('Bible Lookup: database not loaded. Download it first via Settings or the "Fetch database" command.');
+                    new Notice('Bible Lookup: database not loaded. Download it first via Settings.');
                     return;
                 }
                 const editor = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor ?? null;
@@ -143,6 +153,20 @@ export default class BibleLookupPlugin extends Plugin {
         });
 
         this.addSettingTab(new BibleSettingTab(this.app, this));
+        this.app.workspace.onLayoutReady(() => {
+            setTimeout(() => this.ensureEngine().catch(() => { }), 5000);
+        });
+    }
+
+    /** Initialises the engine exactly once; subsequent calls are no-ops. */
+    private ensureEngine(): Promise<void> {
+        if (!this.engineReady) {
+            this.engineReady = this.initEngine().catch(e => {
+                this.engineReady = null; // allow retry on failure
+                throw e;
+            });
+        }
+        return this.engineReady;
     }
 
     onunload(): void {
@@ -150,9 +174,9 @@ export default class BibleLookupPlugin extends Plugin {
     }
 
     // ─── Engine init ────────────────────────────────────────────────────────
-
+    
     async initEngine(): Promise<void> {
-        const binary = Uint8Array.from(atob(sqlWasmBase64), c => c.charCodeAt(0));
+        const binary = base64ToUint8Array(sqlWasmBase64);
         this.SQL = await initSqlJs({ wasmBinary: binary.buffer as ArrayBuffer });
         await this.loadDb();
     }
