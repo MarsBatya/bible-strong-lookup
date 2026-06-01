@@ -258,17 +258,19 @@ export default class BibleLookupPlugin extends Plugin {
         s1.free();
 
         const out: SearchResult[] = [];
-        for (const hit of hits) {
-            const s2 = this.db.prepare(SQL_FIND_TRANSLATIONS);
-            s2.bind([hit.strong_number, hit.lang, hit.testament]);
-            while (s2.step()) {
-                const r = s2.getAsObject() as { lemma: string; count: number };
-                out.push({ strong_number: hit.strong_number, lemma: r.lemma, count: r.count, sourceLemma: hit.sourceLemma, testament: hit.testament });
+        const s2 = this.db.prepare(SQL_FIND_TRANSLATIONS);
+        try {
+            for (const hit of hits) {
+                s2.bind([hit.strong_number, hit.lang, hit.testament]);
+                while (s2.step()) {
+                    const [lemma, count] = s2.get() as [string, number];
+                    out.push({ strong_number: hit.strong_number, lemma: lemma, count: count, sourceLemma: hit.sourceLemma, testament: hit.testament });
+                }
+                s2.reset(); 
             }
+        } finally {
             s2.free();
         }
-
-        out.sort((a, b) => b.count - a.count);
         return out;
     }
 
@@ -295,7 +297,11 @@ export default class BibleLookupPlugin extends Plugin {
     }
 
     async loadSettings(): Promise<void> {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const data = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+        if (!Array.isArray(this.settings.history)) {
+            this.settings.history = []; // Ensure history is always a valid array
+        }
     }
 
     async saveSettings(): Promise<void> {
